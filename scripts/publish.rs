@@ -67,6 +67,7 @@ const CRATES_TO_PUBLISH: &[&str] = &[
     // other misc wasmtime crates
     "wasmtime-wasi",
     "wasmtime-wasi-crypto",
+    "wasmtime-wasi-http",
     "wasmtime-wasi-nn",
     "wasmtime-wasi-threads",
     "wasmtime-wast",
