@@ -14,7 +14,12 @@ use wasmtime_cli_flags::{CommonOptions, WasiModules};
 use wasmtime_wasi::maybe_exit_on_error;
 use wasmtime_wasi::sync::{ambient_authority, Dir, TcpListener, WasiCtxBuilder};
 
-#[cfg(any(feature = "wasi-crypto", feature = "wasi-nn", feature = "wasi-threads"))]
+#[cfg(any(
+    feature = "wasi-crypto",
+    feature = "wasi-nn",
+    feature = "wasi-threads",
+    feature = "wasi-http"
+))]
 use std::sync::Arc;
 
 #[cfg(feature = "wasi-nn")]
@@ -25,6 +30,9 @@ use wasmtime_wasi_crypto::WasiCryptoCtx;
 
 #[cfg(feature = "wasi-threads")]
 use wasmtime_wasi_threads::WasiThreadsCtx;
+
+#[cfg(feature = "wasi-http")]
+use wasmtime_wasi_http::WasiHttp;
 
 fn parse_module(s: &OsStr) -> anyhow::Result<PathBuf> {
     // Do not accept wasmtime subcommand names as the module name
@@ -470,6 +478,8 @@ struct Host {
     wasi_nn: Option<Arc<WasiNnCtx>>,
     #[cfg(feature = "wasi-threads")]
     wasi_threads: Option<Arc<WasiThreadsCtx<Host>>>,
+    #[cfg(feature = "wasi-http")]
+    wasi_http: Option<WasiHttp>,
 }
 
 /// Populates the given `Linker` with WASI APIs.
@@ -566,6 +576,21 @@ fn populate_with_wasi(
                 module,
                 Arc::new(linker.clone()),
             )?));
+        }
+    }
+
+    if wasi_modules.wasi_http {
+        #[cfg(not(feature = "wasi-http"))]
+        {
+            bail!("Cannot enable wasi-http when the binary is not compiled with this feature.");
+        }
+        #[cfg(feature = "wasi-http")]
+        {
+            let w_http = WasiHttp::new();
+            wasmtime_wasi_http::add_to_linker(linker, |host: &mut Host| {
+                host.wasi_http.as_mut().unwrap()
+            })?;
+            store.data_mut().wasi_http = Some(w_http);
         }
     }
 
